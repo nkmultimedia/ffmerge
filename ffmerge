@@ -38,3 +38,4 @@ ffmpeg -f concat -safe 0 -i concat.txt -c copy "$3"
 rm concat.txt
 cd "$INITIAL_DIR"
 echo "Videos merged!"
+
