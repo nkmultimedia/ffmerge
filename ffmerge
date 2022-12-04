@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 # FFMERG
 # Version: 1.0.0
@@ -24,7 +24,7 @@ fi
 # $1 contains target folder
 # $2 contains target file extension
 # $3 output file name
-$INITIAL_DIR=pwd
+INITIAL_DIR=`pwd`
 cd "$1"
 echo "Generating list of input videos..."
 echo "# Videos to merge" > concat.txt
@@ -34,7 +34,7 @@ do
 done
 echo "Input file genereated!"
 echo "Using ffmpeg to merge files..."
-ffmpeg -f concat -i concat.txt -c copy $3
+ffmpeg -f concat -safe 0 -i concat.txt -c copy "$3"
 rm concat.txt
 cd "$INITIAL_DIR"
 echo "Videos merged!"
