@@ -10,7 +10,7 @@
 # The resulting file is optimized for streaming and saves disk space.
 # For example, you could use this script to merge and re-encode all video files that contain the text "episode" in their filenames in a directory.
 #
-# Usage: ffmerg [-h] targetfoler pattern outfile
+# Usage: ffmerge [-h] targetfoler pattern outfile
 # Example: ffmerge /usr/Videos "episode" merged
 
 
