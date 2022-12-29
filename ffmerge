@@ -1,41 +1,154 @@
 #!/usr/bin/env sh
 
-# FFMERG
-# Version: 1.0.0
+# FFMERGE
+# Version: 2.0.0
 # License: Open Source (MIT)
 # Copyright (c) 2018 Niranjan Kalyanasundaram
-# Dependancy: ffmpeg
+# Copyright (c) 2022 Morten Henrichsen (muddermanden)
 
-# Script to merge all files (of a given extension) in a given directory (without reencoding) using FFMPEG (ex: all .mp4 files in ~/Movies )
-# It is assumed that all target files have originated from the same device (encoded using the same codec, container, dimensions, etc)
-# Files created from different sources cannot be merged (see ffmpeg concat command and -c flag for further info)
-# ffmerge <targetdir> <extension> <outfile>
+# This script uses ffmpeg to merge and re-encode all video files that contain a given text pattern in their filenames in a given directory.
+# The resulting file is optimized for streaming and saves disk space.
+# For example, you could use this script to merge and re-encode all video files that contain the text "episode" in their filenames in a directory.
+#
+# Usage: ffmerg [-h] targetfoler pattern outfile
+# Example: ffmerge /usr/Videos "episode" merged
 
-if ! ([[ $1 ]] && [[ $2 ]] && [[ $3 ]])     
-# check for command line args
-then
-    echo "ffmerge uses ffmpeg to merge video or audio files in a given folder"
-    echo "WARNING: It is assumed that all target files have originated from a single source (same codec, container, etc)"
-    echo "usage: ffmerge targetfoler extension outfile"
-    echo "example: ffmerge /usr/Videos .mp4 merged.mp4"
-    exit
-fi
 
-# $1 contains target folder
-# $2 contains target file extension
-# $3 output file name
-INITIAL_DIR=`pwd`
-cd "$1"
-echo "Generating list of input videos..."
-echo "# Videos to merge" > concat.txt
-for file in *$2
-do
-    echo "file '$file'" >> concat.txt
-done
-echo "Input file genereated!"
-echo "Using ffmpeg to merge files..."
-ffmpeg -f concat -safe 0 -i concat.txt -c copy "$3"
-rm concat.txt
-cd "$INITIAL_DIR"
-echo "Videos merged!"
+# Display usage information
+display_usage() {
+    echo "ffmerge uses ffmpeg to merge and re-encode video files in a given folder"
+    echo "The resulting file is optimized for streaming and saves disk space."
+    echo "usage: ffmerge [-h] targetfoler pattern outfile"
+    echo "example: ffmerge /usr/Videos \"episode\" merged"
+}
+
+# Check for command line arguments
+check_arguments() {
+    if ! ([[ $input_folder ]] && [[ $pattern ]] && [[ $output_file ]])
+    then
+        display_usage
+        exit 1
+    fi
+}
+
+# Check for help flag
+check_help_flag() {
+    if [[ $input_folder == "-h" ]] || [[ $input_folder == "--help" ]]
+    then
+        display_usage
+        exit 0
+    fi
+}
+
+# Check that input directory exists and is a directory
+check_input_folder() {
+    if [[ ! -d $input_folder ]]
+    then
+        echo "Error: $input_folder is not a valid directory"
+        exit 1
+    fi
+}
+
+# Check that output file does not have an extension
+check_output_file() {
+    if [[ "$output_file" == *.* ]]
+    then
+        echo "Error: Output file must not have an extension"
+        exit 1
+    fi
+}
+
+# Display the files in the input folder
+display_input_files() {
+    echo "Files in input folder:"
+    for file in "$input_folder"/*
+    do
+        if [[ $file == *"$pattern"* ]]
+        then
+            echo "$(tput setaf 2)$file$(tput sgr0)"
+        else
+            echo "$(tput setaf 1)$file$(tput sgr0)"
+        fi
+    done
+}
+
+# Prompt the user to continue or exit
+prompt_continue_or_exit() {
+    echo "Do you want to continue? (y/n)"
+    read -r continue_or_exit
+    if [[ $continue_or_exit != "y" ]]
+    then
+        exit 0
+    fi
+}
+
+# Generate a list of input files
+generate_input_file_list() {
+    echo "Generating list of input videos..."
+    echo "# Videos to merge" > "$temp_file"
+    find "$input_folder" -name "*$pattern*" -print0 | xargs -0 -I {} echo "file '{}'" >> "$temp_file"
+    echo "Input file generated!"
+}
+
+# Merge and re-encode the input files
+merge_and_reencode_files() {
+    echo "Using ffmpeg to merge and re-encode files..."
+
+    # Declare ffmpeg command and its arguments
+    # The -f concat flag specifies that the input file
+    # The -safe 0 flag disables the "unsafe" file name checks that are performed by ffmpeg
+    # The -i flag specifies the input file
+    # The -vf scale=1280:-2,fps=30 flag combines the `scale` and `fps` video filters into a single filter
+    # The -af aformat=channel_layouts=stereo flag sets the audio format to stereo
+    # The -c:a aac flag specifies the audio codec to use (AAC)
+    # The -c:v libx264 flag specifies the video codec to use (H.264)
+    # The -crf 18 flag specifies the Constant Rate Factor (CRF) value to use for encoding
+    # The -profile:v main flag specifies the H.264 profile to use
+    # The -level 4.0 flag specifies the H.264 level to use
+    # The -b:a 128k flag specifies the audio bitrate to use
+    # The -b:v 1500k flag specifies the video bitrate to use
+    # The -stats flag enables statistics about the input and output files to be printed
+    # The -y flag overwrites the output file if it already exists
+    # The -loglevel warning flag specifies a lower log level
+    # The -nostdin flag prevents ffmpeg from reading from stdin
+    ffmpeg_command=(ffmpeg -f concat -safe 0 -i "$temp_file" -vf scale=1280:-2,fps=30 -af aformat=channel_layouts=stereo -c:a aac -c:v libx264 -crf 18 -profile:v main -level 4.0 -b:a 128k -b:v 1500k -stats -y -loglevel warning -nostdin "$output_file.mp4")
+
+    # Execute ffmpeg command
+    "${ffmpeg_command[@]}"
+}
+
+# Remove the temporary file
+clean_up() {
+    rm "$temp_file"
+}
+
+# Change back to the initial working directory
+change_back_to_initial_dir() {
+    cd "$initial_dir"
+    echo "Videos merged and re-encoded!"
+}
+
+# Main function
+main() {
+    check_arguments
+    check_help_flag
+    check_input_folder
+    check_output_file
+    display_input_files
+    prompt_continue_or_exit
+    generate_input_file_list
+    merge_and_reencode_files
+    clean_up
+    change_back_to_initial_dir
+}
+
+# Declare variables
+input_folder=$1
+pattern=$2
+output_file=$3
+initial_dir=`pwd`
+temp_file="$initial_dir/concat.txt"
+
+# Call main function
+main
 

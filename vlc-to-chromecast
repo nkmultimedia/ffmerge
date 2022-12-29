@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# Function to parse command-line arguments
+parse_arguments() {
+  # Set default values for variables
+  local video_file=""
+  local chromecast_ip=""
+
+  # Parse command-line arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--file)
+        video_file="$2"
+        shift 2
+        ;;
+      -c|--chromecast)
+        chromecast_ip="$2"
+        shift 2
+        ;;
+      -h|--help)
+        # Display usage message
+        echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip]"
+        exit 0
+        ;;
+      *)
+        # Unknown option
+        shift
+        ;;
+    esac
+  done
+
+  # Set default values for variables if they are not set
+  if [[ -z "$video_file" ]]; then
+    video_file="output.mp4"
+  fi
+  if [[ -z "$chromecast_ip" ]]; then
+    chromecast_ip="192.168.0.32"
+  fi
+
+  # Return variables
+  echo "$video_file" "$chromecast_ip"
+}
+
+# Function to stream video to Chromecast
+stream_to_chromecast() {
+  local video_file=$1
+  local chromecast_ip=$2
+
+  vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
+}
+
+# Main function
+main() {
+  # Parse command-line arguments
+  local video_file chromecast_ip
+  read -r video_file chromecast_ip <<< "$(parse_arguments "$@")"
+
+  # Stream video to Chromecast
+  stream_to_chromecast "$video_file" "$chromecast_ip"
+}
+
+# Call main function
+main "$@"
