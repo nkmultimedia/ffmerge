@@ -3,51 +3,47 @@
 # Function to parse command-line arguments
 parse_arguments() {
   # Set default values for variables
-  local video_file=""
-  local chromecast_ip=""
+  local video_file="output.mp4"
+  local chromecast_ip="192.168.0.32"
   local display_help=false
+  local debug=false
 
   # Parse command-line arguments
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -f|--file)
-        video_file="$2"
-        shift 2
+  while getopts "f:c:hd" opt; do
+    case "$opt" in
+      f)
+        video_file="$OPTARG"
         ;;
-      -c|--chromecast)
-        chromecast_ip="$2"
-        shift 2
+      c)
+        chromecast_ip="$OPTARG"
         ;;
-      -h|--help)
-        # Display usage message
+      h)
         display_help=true
-        shift
         ;;
-      *)
+      d)
+        debug=true
+        ;;
+      \?)
         # Unknown option
-        shift
         ;;
     esac
   done
 
-  # Set default values for variables if they are not set
-  if [[ -z "$video_file" ]]; then
-    video_file="output.mp4"
-  fi
-  if [[ -z "$chromecast_ip" ]]; then
-    chromecast_ip="192.168.0.32"
-  fi
-
   # Return variables
-  echo "$video_file" "$chromecast_ip" "$display_help"
+  echo "$video_file" "$chromecast_ip" "$display_help" "$debug"
 }
 
 # Function to stream video to Chromecast
 stream_to_chromecast() {
   local video_file=$1
   local chromecast_ip=$2
+  local debug=$3
 
-  vlc --verbose "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+  if [[ "$debug" = true ]]; then
+    vlc --verbose "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+  else
+    vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+  fi
 }
 
 # Function to confirm user input
@@ -58,7 +54,7 @@ confirm_input() {
   read -p "Stream $video_file to Chromecast at $chromecast_ip? [y/n] " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
     # Stream video to Chromecast
-    stream_to_chromecast "$video_file" "$chromecast_ip"
+    stream_to_chromecast "$video_file" "$chromecast_ip" "$debug"
   else
     echo "Aborting."
   fi
@@ -67,15 +63,15 @@ confirm_input() {
 # Main function
 main() {
   # Parse command-line arguments
-  local video_file chromecast_ip display_help
-  read -r video_file chromecast_ip display_help <<< "$(parse_arguments "$@")"
+  local video_file chromecast_ip display_help debug
+  read -r video_file chromecast_ip display_help debug <<< "$(parse_arguments "$@")"
 
   if [[ "$display_help" = true ]]; then
     # Display usage message
-    echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip]"
+    echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip] [-d|--debug] [-h|--help]"
   else
     # Confirm user input
-    confirm_input "$video_file" "$chromecast_ip"
+    confirm_input "$video_file" "$chromecast_ip" "$debug"
   fi
 }
 
