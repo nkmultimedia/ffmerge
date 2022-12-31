@@ -5,6 +5,7 @@ parse_arguments() {
   # Set default values for variables
   local video_file=""
   local chromecast_ip=""
+  local display_help=false
 
   # Parse command-line arguments
   while [[ $# -gt 0 ]]; do
@@ -19,8 +20,8 @@ parse_arguments() {
         ;;
       -h|--help)
         # Display usage message
-        echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip]"
-        exit 0
+        display_help=true
+        shift
         ;;
       *)
         # Unknown option
@@ -38,7 +39,7 @@ parse_arguments() {
   fi
 
   # Return variables
-  echo "$video_file" "$chromecast_ip"
+  echo "$video_file" "$chromecast_ip" "$display_help"
 }
 
 # Function to stream video to Chromecast
@@ -46,17 +47,36 @@ stream_to_chromecast() {
   local video_file=$1
   local chromecast_ip=$2
 
-  vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
+  vlc --verbose "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+}
+
+# Function to confirm user input
+confirm_input() {
+  local video_file=$1
+  local chromecast_ip=$2
+
+  read -p "Stream $video_file to Chromecast at $chromecast_ip? [y/n] " confirm
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    # Stream video to Chromecast
+    stream_to_chromecast "$video_file" "$chromecast_ip"
+  else
+    echo "Aborting."
+  fi
 }
 
 # Main function
 main() {
   # Parse command-line arguments
-  local video_file chromecast_ip
-  read -r video_file chromecast_ip <<< "$(parse_arguments "$@")"
+  local video_file chromecast_ip display_help
+  read -r video_file chromecast_ip display_help <<< "$(parse_arguments "$@")"
 
-  # Stream video to Chromecast
-  stream_to_chromecast "$video_file" "$chromecast_ip"
+  if [[ "$display_help" = true ]]; then
+    # Display usage message
+    echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip]"
+  else
+    # Confirm user input
+    confirm_input "$video_file" "$chromecast_ip"
+  fi
 }
 
 # Call main function
