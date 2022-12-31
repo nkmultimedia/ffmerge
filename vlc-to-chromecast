@@ -40,9 +40,10 @@ stream_to_chromecast() {
   local debug=$3
 
   if [[ "$debug" = true ]]; then
-    vlc --verbose "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+    echo "Running VLC in verbose mode..."
+    vlc --verbose 2 "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
   else
-    vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop
+    vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
   fi
 }
 
