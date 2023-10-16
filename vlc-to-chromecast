@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+# Function to parse command-line arguments
+parse_arguments() {
+  # Set default values for variables
+  local video_file="output.mp4"
+  local chromecast_ip="192.168.0.32"
+  local display_help=false
+  local debug=false
+
+  # Parse command-line arguments
+  while getopts "f:c:hd" opt; do
+    case "$opt" in
+      f)
+        video_file="$OPTARG"
+        ;;
+      c)
+        chromecast_ip="$OPTARG"
+        ;;
+      h)
+        display_help=true
+        ;;
+      d)
+        debug=true
+        ;;
+      \?)
+        # Unknown option
+        ;;
+    esac
+  done
+
+  # Return variables
+  echo "$video_file" "$chromecast_ip" "$display_help" "$debug"
+}
+
+# Function to stream video to Chromecast
+stream_to_chromecast() {
+  local video_file=$1
+  local chromecast_ip=$2
+  local debug=$3
+
+  if [[ "$debug" = true ]]; then
+    echo "Running VLC in verbose mode..."
+    vlc --verbose 2 "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
+  else
+    vlc "$video_file" --sout "#chromecast" --sout-chromecast-ip="$chromecast_ip" --demux-filter=demux_chromecast --loop -Idummy
+  fi
+}
+
+# Function to confirm user input
+confirm_input() {
+  local video_file=$1
+  local chromecast_ip=$2
+
+  read -p "Stream $video_file to Chromecast at $chromecast_ip? [y/n] " confirm
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    # Stream video to Chromecast
+    stream_to_chromecast "$video_file" "$chromecast_ip" "$debug"
+  else
+    echo "Aborting."
+  fi
+}
+
+# Main function
+main() {
+  # Parse command-line arguments
+  local video_file chromecast_ip display_help debug
+  read -r video_file chromecast_ip display_help debug <<< "$(parse_arguments "$@")"
+
+  if [[ "$display_help" = true ]]; then
+    # Display usage message
+    echo "Usage: $0 [-f|--file video_file] [-c|--chromecast chromecast_ip] [-d|--debug] [-h|--help]"
+  else
+    # Confirm user input
+    confirm_input "$video_file" "$chromecast_ip" "$debug"
+  fi
+}
+
+# Call main function
+main "$@"
